@@ -38,11 +38,8 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}              
 
-      - name: ACR login
-        uses: azure/docker-login@v2
-        with:
-          login-server: ${{ secrets.ACR_NAME }}.azurecr.io
-          username: ${{ secrets.ACR_NAME }}
+      - name: ACR login (no admin password required)
+        run: az acr login -n ${ { secrets.ACR_NAME } }
 
       - name: Test Azure login
         run: az acr list -o table
