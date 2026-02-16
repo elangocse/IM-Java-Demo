@@ -78,6 +78,7 @@ def map_image(image: str, name_hint: str, image_registry: str, repo_prefix: str)
 
     Rules:
     - If 'image' already looks fully-qualified (contains registry/repo:tag), keep as-is.
+    - If image_registry already contains a tag (has ':'), use it as-is (it's a complete image reference).
     - If empty or imagestream-ish, map to:
          IMAGE_REGISTRY[/REPO_PREFIX]/<name_hint>:latest
       (Tag pinning is expected in CD; ':latest' is a safe placeholder here.)
@@ -86,6 +87,10 @@ def map_image(image: str, name_hint: str, image_registry: str, repo_prefix: str)
     # Simple heuristic to detect fully-qualified references
     if image and ("/" in image or "." in image) and ":" in image:
         return image
+
+    # If IMAGE_REGISTRY already contains a tag, use it as-is (it's a complete image reference)
+    if image_registry and ":" in image_registry:
+        return image_registry
 
     repo = name_hint
     if repo_prefix:
@@ -273,7 +278,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     #print(f"source arg: {src}" )
 
-    report_path = out / "transform-report.md"
+    report_path = out.parent / "transform-report.md"
     summary = {"DeploymentConfig": 0, "Route": 0, "BuildConfig": 0, "Other": 0}
     converted = 0
     warnings = []

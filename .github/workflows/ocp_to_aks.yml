@@ -149,7 +149,7 @@ jobs:
         run: |
           BRANCH="$(git rev-parse --abbrev-ref HEAD)"
           echo "Committing to branch: $BRANCH"
-          git commit -m "chore(ocp2aks): update AKS manifests in ${OUT_DIR}"
+          git commit -m "ocp2aks update AKS manifests in ${OUT_DIR}"
           git push origin "$BRANCH"
 
       - name: Upload artifacts (for review/CI)
