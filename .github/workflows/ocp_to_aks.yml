@@ -103,8 +103,23 @@ jobs:
         with:
           version: 'latest'
 
+       # Lightweight structural check (no cluster)
       - name: Validate manifests (dry-run)
-        run: kubectl apply --dry-run=client -f "$OUT_DIR"
+        run: kubectl apply --dry-run=client --validate=false -f "$OUT_DIR"
+
+        # Strict schema validation (no cluster)
+      - name: Kubeconform validation
+        run: |
+            curl -sSL -o kubeconform.tar.gz \
+            https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz
+            tar -xzf kubeconform.tar.gz kubeconform
+            ./kubeconform \
+            -kubernetes-version 1.28 \
+            -strict \
+            -summary \
+            -ignore-missing-schemas \
+            "$OUT_DIR"
+
 
       # ──────────────────────────────────────────────────────────────
       # Commit & push changes back to the repo
