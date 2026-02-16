@@ -43,7 +43,7 @@ on:
     paths:
       - 'openshift/**'
       - 'tools/**'
-      - '.github/workflows/ocp-to-aks.yml'
+      - '.github/workflows/ocp_to_aks.yml'
   workflow_dispatch: 
 permissions:
   contents: write
