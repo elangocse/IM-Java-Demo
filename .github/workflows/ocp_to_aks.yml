@@ -104,8 +104,8 @@ jobs:
           version: 'latest'
 
        # Lightweight structural check (no cluster)
-      - name: Validate manifests (dry-run)
-        run: kubectl apply --dry-run=client --validate=false -f "$OUT_DIR"
+      #- name: Validate manifests (dry-run)
+       # run: kubectl apply --dry-run=client --validate=false -f "$OUT_DIR"
 
         # Strict schema validation (no cluster)
       - name: Kubeconform validation
