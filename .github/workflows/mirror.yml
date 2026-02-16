@@ -11,6 +11,14 @@ jobs:
     permissions:
       id-token: write
       contents: read
+
+    env:
+      AWS_ACCOUNT_ID: 975139218322
+      AWS_REGION: us-east-1
+      ECR_REPO: im-sample-app
+      TAG: v1
+      ACR_NAME: ${{ secrets.ACR_NAME }}
+      #PREFIX: dxctraining      
         
     steps:
       - name: Say Hello
@@ -43,4 +51,46 @@ jobs:
 
       - name: Test Azure login
         run: az acr list -o table
+
+      # 5) Install skopeo for direct registry copy
+      - name: Install skopeo
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y skopeo
+
+      # 6) Compute source and destination refs
+      - name: Compute refs
+        id: refs
+        shell: bash
+        run: |
+          SRC="docker://${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${TAG}"
+          # If ECR repo path is team/app1 -> default ACR repo is last segment 'app1'
+          REPO_LAST="${ECR_REPO##*/}"
+          if [[ -n "$PREFIX" ]]; then
+            DEST_REPO="${PREFIX}/${REPO_LAST}"
+          else
+            DEST_REPO="${REPO_LAST}"
+          fi
+          DEST="docker://${ACR_NAME}.azurecr.io/${DEST_REPO}:${TAG}"
+          echo "src=$SRC" >> $GITHUB_OUTPUT
+          echo "dest=$DEST" >> $GITHUB_OUTPUT
+          echo "dest_repo=${DEST_REPO}" >> $GITHUB_OUTPUT
+
+      # 7) Copy ECR -> ACR (multi-arch aware)
+      - name: Copy image ECR -> ACR
+        run: |
+          skopeo copy --all \
+            --src-tls-verify=true \
+            --dest-tls-verify=true \
+            "${{ steps.refs.outputs.src }}" \
+            "${{ steps.refs.outputs.dest }}"
+
+      # 9) Verify in ACR
+      - name: Show tags in ACR
+        run: |
+          az acr repository show-tags \
+            -n "$ACR_NAME" \
+            --repository "${{ steps.refs.outputs.dest_repo }}" \
+            -o table || true
+        
 
