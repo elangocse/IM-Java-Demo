@@ -42,9 +42,9 @@ on:
       - main
     paths:
       - 'openshift/**'
-      - 'tools/ocp2aks/**'
+      - 'tools/**'
       - '.github/workflows/ocp-to-aks.yml'
-
+  workflow_dispatch: 
 permissions:
   contents: write
   pull-requests: write
@@ -81,7 +81,7 @@ jobs:
       - name: Install dependencies
         run: pip install pyyaml
 
-      - name: Run transformer
+      - name: Run transformer OCP to AKS
         run: |
           python tools/ocp2aks.py \
             --src "$SRC_DIR" \
