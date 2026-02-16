@@ -114,7 +114,7 @@ jobs:
             https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz
             tar -xzf kubeconform.tar.gz kubeconform
             ./kubeconform \
-            -kubernetes-version 1.28 \
+            -kubernetes-version 1.28.10 \
             -strict \
             -summary \
             -ignore-missing-schemas \
