@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: sample-web-app
-        image: dxctraining.azurecr.io/im-sample-app:v1/apps/sample-web-app:latest
+        image: dxctraining.azurecr.io/im-sample-app:v1
         ports:
         - containerPort: 80
           protocol: TCP
