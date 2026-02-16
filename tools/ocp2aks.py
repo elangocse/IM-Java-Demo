@@ -326,9 +326,8 @@ def main():
 
         #print(f"Output {len(out_docs)}")
         if out_docs:
-            rel = path.relative_to(src)
-            mapped_filename = map_output_filename(rel, out_docs)
-            dest = (out / mapped_filename).with_suffix(".yaml")
+            mapped_filename = map_output_filename(path, out_docs)
+            dest = (out / mapped_filename.name).with_suffix(".yaml")
             print(f"doc(s) to: {dest}")
             dest.parent.mkdir(parents=True, exist_ok=True)
             with open(dest, "w") as g:
