@@ -38,7 +38,8 @@ on:
 
   # Optional: auto-run when OpenShift input files change
   push:
-    branches: [ main ]
+    branches: 
+      - main
     paths:
       - 'openshift/**'
       - 'tools/ocp2aks/**'
