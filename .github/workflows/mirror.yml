@@ -22,7 +22,7 @@ jobs:
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::675193218333:role/GitHubActions-ECR-Access
+          role-to-assume: arn:aws:iam::975139218322:role/GitHubActions-ECR-Access
           aws-region: us-east-1
 
       - name: Login to ECR
@@ -31,4 +31,4 @@ jobs:
             docker login \
               --username AWS \
               --password-stdin \
-              675193218333.dkr.ecr.us-east-1.amazonaws.com
+              975139218322.dkr.ecr.us-east-1.amazonaws.com
