@@ -32,3 +32,18 @@ jobs:
               --username AWS \
               --password-stdin \
               975139218322.dkr.ecr.us-east-1.amazonaws.com
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}              
+
+      - name: ACR login
+        uses: azure/docker-login@v2
+        with:
+          login-server: ${{ secrets.ACR_NAME }}.azurecr.io
+          username: ${{ secrets.ACR_NAME }}
+
+      - name: Test Azure login
+        run: az acr list -o table
+
