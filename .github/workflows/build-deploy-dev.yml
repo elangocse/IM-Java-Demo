@@ -43,7 +43,7 @@ jobs:
         id: vars
         shell: bash
         run: |
-          REPO_NAME="${GITHUB_REPOSITORY##*/}"
+          REPO_NAME="im-java-demo"
           IMAGE_REPO="${IMAGE_REPO_PREFIX}/${REPO_NAME}"
           SHORT_SHA="${GITHUB_SHA::7}"
           IMAGE_TAG="sha-${SHORT_SHA}"
