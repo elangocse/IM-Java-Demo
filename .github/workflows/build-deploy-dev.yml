@@ -18,6 +18,10 @@ on:
         description: "K8s Deployment name"
         required: true
         default: "myapp"
+      namespace:
+        description: "K8s namespace"
+        required: true
+        default: "sample-app"        
 
 permissions:
   contents: read
@@ -78,32 +82,39 @@ jobs:
           cache-from: type=registry,ref=${{ steps.vars.outputs.image_fqdn }}/${{ steps.vars.outputs.repo }}:buildcache
           cache-to: type=registry,ref=${{ steps.vars.outputs.image_fqdn }}/${{ steps.vars.outputs.repo }}:buildcache,mode=max
 
+      - name: Trivy scan (critical/high → fail)
+        uses: aquasecurity/trivy-action@0.22.0
+        with:
+            image-ref: ${{ steps.vars.outputs.image_ref }}
+            format: 'table'
+            exit-code: '1'
+            severity: 'CRITICAL,HIGH'
+
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
         with:
           version: 'latest'
 
       - name: Install kustomize
-        uses: imranismail/setup-kustomize@v3
-
-      - name: Get AKS credentials (DEV)    
         env:
-            KUBECONFIG: ${{ github.workspace }}/kubeconfig.dev
+          KUSTOMIZE_VERSION: v5.4.1
+        run: |
+          set -euo pipefail
+          curl -sSL -o kustomize.tar.gz \
+            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
+          tar -xzf kustomize.tar.gz
+          sudo mv kustomize /usr/local/bin/kustomize
+          kustomize version
+
+      - name: Get AKS credentials (DEV)
         run: |
           az aks get-credentials \
             -g "${{ secrets.AKS_RG_DEV }}" \
             -n "${{ secrets.AKS_CLUSTER_DEV }}" \
-            --overwrite-existing \
-            --context "dev-${{ secrets.AKS_CLUSTER_DEV }}"
-          echo "Kubeconfig written to $KUBECONFIG"
-          kubectl config get-contexts
-          kubectl config use-context "dev-${{ secrets.AKS_CLUSTER_DEV }}"
+            --overwrite-existing
 
-
-      - name: Ensure namespace exists (dev)
-        env:
-            KUBECONFIG: ${{ github.workspace }}/kubeconfig.dev
-        run: kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -
+      - name: Ensure namespace exists
+        run: kubectl create namespace ${{ inputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Update image in DEV overlay
         working-directory: ${{ inputs.overlay_path }}
@@ -115,10 +126,10 @@ jobs:
         run: kubectl apply -k ${{ inputs.overlay_path }}
 
       - name: Wait for rollout (DEV)
-        run: kubectl -n dev rollout status deployment/${{ inputs.deployment_name }} --timeout=180s
+        run: kubectl -n ${{ inputs.namespace }} rollout status deployment/${{ inputs.deployment_name }} --timeout=180s
 
       - name: Show pods (DEV)
-        run: kubectl -n dev get pods -o wide
+        run: kubectl -n ${{ inputs.namespace }} get pods -o wide
 
       - name: Save image_ref for promotion
         run: echo '${{ steps.vars.outputs.image_ref }}' > image_ref.txt
