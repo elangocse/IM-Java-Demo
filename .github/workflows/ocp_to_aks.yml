@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SRC_DIR: openshift
-      OUT_DIR: dist/aks/base
+      OUT_DIR: deploy/base
       DEFAULT_DOMAIN: apps.example.com
       INGRESS_CLASS: nginx
       TLS_SECRET: myapp-tls
