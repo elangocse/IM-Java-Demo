@@ -1,61 +1,81 @@
-name: Build & Push Docker image to ACR
+name: Promote to PROD
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'Dockerfile'
-      - 'src/**'
   workflow_dispatch:
+    inputs:
+      image_ref:
+        description: "Full image ref to promote (e.g., myacr.azurecr.io/apps/myapp:sha-abc1234)"
+        required: true
+      manifest_path:
+        description: "PROD manifests path (dir or file)"
+        required: true
+        default: "dist/aks/overlays/prod"
+      namespace:
+        description: "Kubernetes namespace (PROD)"
+        required: true
+        default: "prod"
+      deployment_name:
+        description: "K8s Deployment name"
+        required: true
+        default: "myapp"
+      container_name:
+        description: "Container name inside the Deployment"
+        required: true
+        default: "api"
+      ingress_host:
+        description: "Optional Ingress host for smoke test (e.g., app.example.com)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  # Optional: use environment gate for approvals
+  # Enforce approval in repo Settings → Environments → prod
+  # pull-requests: read
+  # id-token: write
 
 jobs:
-  build-and-push:
+  promote:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write   # for azure/login OIDC
-      contents: read
-
-    env:
-      ACR_NAME: ${{ secrets.ACR_NAME }}
-      IMAGE_PREFIX: ${{ secrets.REGISTRY_IMAGE_PREFIX }} # optional (e.g., apps)
+    # Optional approval gate:
+    # environment: prod
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Derive image names
-        id: vars
-        run: |
-          REPO_NAME="${GITHUB_REPOSITORY##*/}"
-          SHORT_SHA="${GITHUB_SHA::7}"
-          if [[ -n "${IMAGE_PREFIX}" ]]; then
-            IMAGE_REPO="${IMAGE_PREFIX}/${REPO_NAME}"
-          else
-            IMAGE_REPO="${REPO_NAME}"
-          fi
-          echo "repo=${IMAGE_REPO}" >> $GITHUB_OUTPUT
-          echo "sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
-
-      - name: Azure login (OIDC)
+      - name: Azure login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: ACR login
-        uses: azure/docker-login@v2
-        with:
-          login-server: ${{ secrets.ACR_NAME }}.azurecr.io
-          username: ${{ secrets.ACR_NAME }}
+      - name: Get AKS credentials (PROD)
+        run: |
+          az aks get-credentials \
+            -g "${{ secrets.AKS_RG_PROD }}" \
+            -n "${{ secrets.AKS_CLUSTER_PROD }}" \
+            --overwrite-existing
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Ensure namespace exists (PROD)
+        run: kubectl create namespace "${{ inputs.namespace }}" --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.ACR_NAME }}.azurecr.io/${{ steps.vars.outputs.repo }}:${{ steps.vars.outputs.sha }}
-            ${{ secrets.ACR_NAME }}.azurecr.io/${{ steps.vars.outputs.repo }}:latest
+      - name: Apply manifests (PROD)
+        run: kubectl -n "${{ inputs.namespace }}" apply -f "${{ inputs.manifest_path }}"
+
+      - name: Pin Deployment image to the provided image_ref (PROD)
+        run: |
+          kubectl -n "${{ inputs.namespace }}" set image \
+            deployment/${{ inputs.deployment_name }} \
+            ${{ inputs.container_name }}="${{ inputs.image_ref }}" \
+            --record=true
+
+      - name: Wait for rollout (PROD)
+        run: kubectl -n "${{ inputs.namespace }}" rollout status deployment/${{ inputs.deployment_name }} --timeout=300s
+
+      - name: Show pods (PROD)
+        run: kubectl -n "${{ inputs.namespace }}" get pods -o wide
+
+      - name: Optional smoke test via ingress (PROD)
+        if: ${{ inputs.ingress_host != '' }}
+        run: |
+          echo "Hitting https://${{ inputs.ingress_host }}/health or /"
+          curl -k -sS -m 10 "https://${{ inputs.ingress_host }}/health" || \
+          curl -k -sS -m 10 "https://${{ inputs.ingress_host }}/" || \
+          (echo "Smoke test failed" && exit 1)
